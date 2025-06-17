@@ -59,3 +59,27 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
+
+/* Modo oscuro y tema alternativo */
+body.dark-mode {
+  background-color: #181825;
+  color: #f1f5f9;
+}
+
+.toggle-theme {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  background: #1a202c;
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: background 0.2s;
+}
+.toggle-theme:hover {
+  background: #6366f1;
+}
