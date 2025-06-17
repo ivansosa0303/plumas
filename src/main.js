@@ -48,17 +48,42 @@ class App {
     this.ui.init();
     this.addThemeToggle();
     this.addLanguageToggle();
+    this.showDailyMessage();
     this.ui.renderQuestionForm(this.handleOracleQuestion.bind(this));
     this.showHistory();
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.register('/service-worker.js');
         console.log('ServiceWorker registration successful:', registration);
+        // Recarga automática si hay una nueva versión
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              if (confirm('Hay una nueva versión disponible. ¿Actualizar ahora?')) {
+                window.location.reload();
+              }
+            }
+          };
+        };
       } catch (error) {
         console.error('ServiceWorker registration failed:', error);
       }
     }
     this.setupEventListeners();
+  }
+
+  showDailyMessage() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem('oracleDailyMsg') !== today) {
+      const answer = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)];
+      this.ui.showOracleCard('Mensaje del día: ' + answer);
+      localStorage.setItem('oracleDailyMsg', today);
+      setTimeout(() => {
+        this.ui.renderQuestionForm(this.handleOracleQuestion.bind(this));
+        this.showHistory();
+      }, 3500);
+    }
   }
 
   addThemeToggle() {
@@ -102,7 +127,7 @@ class App {
     this.ui.showOracleLoading();
     setTimeout(() => {
       let answer = this.getPersonalizedAnswer(question);
-      this.ui.showOracleResponse(answer);
+      this.ui.showOracleCard(answer);
       addToHistory(question, answer);
       this.showHistory();
       this.ui.addAskAgainButton(() => {
@@ -112,7 +137,6 @@ class App {
       this.ui.addShareButton(answer);
       this.ui.fadeIn(document.getElementById('oracleResponse'));
       this.ui.fadeIn(document.querySelector('#mainContent .mt-10'));
-      // Notificación push local simulada
       if (window.Notification && Notification.permission === 'granted') {
         new Notification('Plumas del Destino', { body: answer });
       } else if (window.Notification && Notification.permission !== 'denied') {

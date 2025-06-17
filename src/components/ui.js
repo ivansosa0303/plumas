@@ -1,3 +1,6 @@
+import { guardarConsulta, limpiarHistorial, obtenerHistorial } from './api.js';
+import { changeLanguage, initI18n, t } from './i18n.js';
+
 /**
  * Utility function to sanitize user input and prevent XSS attacks
  * @param {string} text - The input text to sanitize
@@ -142,6 +145,27 @@ export class UI {
   }
 
   /**
+   * Muestra una carta visual animada con el mensaje del oráculo
+   * @param {string} answer
+   */
+  showOracleCard(answer) {
+    const responseDiv = document.getElementById('oracleResponse');
+    if (responseDiv) {
+      responseDiv.innerHTML = `
+        <div class="flex justify-center mt-8">
+          <div class="relative w-64 h-40 bg-gradient-to-br from-indigo-800 to-indigo-400 rounded-xl shadow-lg overflow-hidden animate-oracle-card">
+            <div class="absolute inset-0 flex flex-col items-center justify-center p-6">
+              <span class="block text-lg font-serif-display text-slate-100 mb-2">Mensaje del Oráculo</span>
+              <span class="block text-xl text-indigo-100 text-center">${sanitizeInput(answer)}</span>
+            </div>
+            <div class="absolute bottom-2 right-4 text-xs text-indigo-200 opacity-60">✨ Plumas del Destino</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  /**
    * Muestra el historial de preguntas y respuestas
    * @param {Array<{question: string, answer: string, date: string}>} history
    */
@@ -271,5 +295,92 @@ export class UI {
       el.classList.add('fade-in');
       setTimeout(() => el.classList.remove('fade-in'), 600);
     }
+  }
+}
+
+export function renderUI() {
+  // Inicializar idioma
+  const lang = localStorage.getItem('lang') || 'es';
+  initI18n(lang);
+
+  // Render principal
+  document.getElementById('root').innerHTML = `
+    <main role="main" class="max-w-lg mx-auto p-4">
+      <h1 class="text-3xl font-serif text-center mb-4">${t('saludo')}</h1>
+      <form id="formPregunta" class="flex flex-col gap-2 mb-4" autocomplete="off">
+        <input id="inputPregunta" type="text" class="rounded p-2 text-slate-900" placeholder="${t('pregunta')}" aria-label="${t('pregunta')}">
+        <button type="submit" class="bg-primary text-white rounded p-2">${t('enviar')}</button>
+      </form>
+      <section id="respuesta" class="mb-4" aria-live="polite"></section>
+      <section id="historial" class="mb-4"></section>
+      <div class="flex gap-2 justify-center">
+        <button id="btnLimpiar" class="text-xs underline">${t('limpiar')}</button>
+        <button id="btnIdioma" class="text-xs underline">${t('idioma')}</button>
+      </div>
+    </main>
+  `;
+
+  // Eventos
+  document.getElementById('formPregunta').onsubmit = async (e) => {
+    e.preventDefault();
+    const pregunta = document.getElementById('inputPregunta').value.trim();
+    if (!pregunta) return;
+    const respuesta = await obtenerRespuesta(pregunta);
+    document.getElementById('respuesta').innerHTML = `<div class="card bg-secondary p-4 rounded shadow animate-fade-in">${respuesta}
+      <button id="btnCompartir" class="btn-mistico mt-2">${t('compartir')}</button>
+    </div>`;
+    await guardarConsulta(pregunta, respuesta);
+    renderHistorial();
+    // Dispara evento para notificación local
+    window.dispatchEvent(new CustomEvent('oracle-answer', { detail: respuesta }));
+    // Botón compartir
+    setTimeout(() => {
+      const btn = document.getElementById('btnCompartir');
+      if (btn) btn.onclick = () => compartirRespuesta(respuesta);
+    }, 100);
+  };
+
+  document.getElementById('btnLimpiar').onclick = async () => {
+    await limpiarHistorial();
+    renderHistorial();
+  };
+
+  document.getElementById('btnIdioma').onclick = () => {
+    const nuevo = lang === 'es' ? 'en' : 'es';
+    changeLanguage(nuevo);
+    renderUI();
+  };
+
+  renderHistorial();
+}
+
+async function renderHistorial() {
+  const historial = await obtenerHistorial();
+  const cont = document.getElementById('historial');
+  if (!historial.length) {
+    cont.innerHTML = `<p class="text-xs text-slate-400">${t('historial')}: (vacío)</p>`;
+    return;
+  }
+  cont.innerHTML = `<h2 class="font-bold mb-2 text-sm">${t('historial')}</h2>` +
+    historial.map(item => `<div class="mb-1"><span class="font-semibold">Q:</span> ${item.pregunta}<br><span class="font-semibold">A:</span> ${item.respuesta}</div>`).join('');
+}
+
+async function obtenerRespuesta(pregunta) {
+  // Aquí puedes integrar IA o lógica personalizada
+  // Por ahora, respuesta aleatoria
+  const frases = [
+    'El destino sonríe a los valientes.',
+    'Confía en tu intuición.',
+    'Cada día es una nueva oportunidad.'
+  ];
+  return frases[Math.floor(Math.random() * frases.length)];
+}
+
+async function compartirRespuesta(respuesta) {
+  if (navigator.share) {
+    await navigator.share({ title: 'Plumas del Destino', text: respuesta });
+  } else {
+    await navigator.clipboard.writeText(respuesta);
+    alert('Respuesta copiada');
   }
 }

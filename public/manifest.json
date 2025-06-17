@@ -1,0 +1,13 @@
+{
+  "name": "Plumas del Destino",
+  "short_name": "Plumas",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1a202c",
+  "theme_color": "#1a202c",
+  "description": "Un oráculo digital para guiar tu camino.",
+  "icons": [
+    {"src": "iconos/icon-192x192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "iconos/icon-512x512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

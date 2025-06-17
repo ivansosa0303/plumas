@@ -1,5 +1,9 @@
-const CACHE_NAME = 'plumas-cache-v1';
-const ASSETS_TO_CACHE = [
+import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate } from 'workbox-strategies';
+
+// Precaching de los recursos generados por Vite y los estáticos
+precacheAndRoute(self.__WB_MANIFEST || [
   '/',
   '/index.html',
   '/src/main.js',
@@ -9,66 +13,34 @@ const ASSETS_TO_CACHE = [
   '/manifest.json',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=Inter:wght@400;700&display=swap'
-];
+]);
 
-// Install event - caches the app shell
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Cache opened');
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .catch((error) => {
-        console.error('Error during service worker installation:', error);
-      })
-  );
+// Estrategia para recursos externos y API
+registerRoute(
+  ({url}) => url.origin === 'https://cdn.tailwindcss.com' || url.origin.includes('fonts.googleapis.com'),
+  new StaleWhileRevalidate()
+);
+
+registerRoute(
+  ({request}) => request.destination === 'script' || request.destination === 'style' || request.destination === 'image',
+  new StaleWhileRevalidate()
+);
+
+// Fallback para navegación offline
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/public/index.html'))
+    );
+  }
 });
 
-// Activate event - cleanup old caches
+// Limpieza de cachés antiguos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(key => !key.startsWith('workbox')).map(key => caches.delete(key)))
+    )
   );
-});
-
-// Fetch event - implements Cache First strategy
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          // Return cached version
-          return response;
-        }
-        // Fetch from network
-        return fetch(event.request).then(
-          (response) => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response as it can only be consumed once
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          }
-        );
-      })
-  );
+  clients.claim();
 });
