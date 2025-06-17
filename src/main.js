@@ -1,5 +1,5 @@
 import { API } from './components/api.js';
-import { UI } from './components/ui.js';
+import { UI, renderUI } from './components/ui.js';
 
 // Respuestas inspiradoras del oráculo
 const ORACLE_ANSWERS = [
@@ -179,5 +179,15 @@ class App {
 
 // Start the application when the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  renderUI();
   window.app = new App();
+
+  // Mensaje del día automático (una vez por día)
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (localStorage.getItem('motd') !== hoy) {
+    localStorage.setItem('motd', hoy);
+    setTimeout(() => {
+      alert('✨ Mensaje del día: Confía en tu intuición.');
+    }, 500);
+  }
 });
